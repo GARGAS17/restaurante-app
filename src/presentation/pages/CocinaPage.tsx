@@ -49,7 +49,7 @@ export default function CocinaPage() {
   const ordenesLlevar = ordenesActivas.filter(o => o.tipo === 'llevar');
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4">
+    <div className="flex flex-col gap-4 min-h-screen md:min-h-0 md:h-[calc(100vh-10rem)] pb-6 md:pb-0">
       <div className="flex justify-between items-center bg-gray-800 text-white p-4 rounded-xl shadow-md">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Panel de Cocina</h1>
@@ -67,7 +67,7 @@ export default function CocinaPage() {
         </div>
       </div>
       
-      <div className="flex-1 grid grid-cols-2 gap-6 overflow-hidden">
+      <div className="flex-1 flex flex-col md:grid md:grid-cols-2 gap-6 md:overflow-hidden">
         {/* PANEL MESA */}
         <div className="bg-gray-100 shadow-inner rounded-xl overflow-hidden flex flex-col border border-gray-200">
           <div className="bg-blue-100 p-3 border-b border-blue-200 text-blue-800 font-bold text-center uppercase tracking-widest">

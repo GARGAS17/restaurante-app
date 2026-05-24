@@ -61,7 +61,7 @@ export default function AdminPage() {
       </div>
       
       {/* DASHBOARD WIDGETS */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border flex items-center gap-4">
           <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
             <BarChart3 className="w-8 h-8" />
@@ -91,13 +91,13 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* INVENTARIO */}
         <div className="bg-white shadow-sm rounded-xl border flex flex-col overflow-hidden max-h-[600px]">
           <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800">Control de Inventario Diario</h2>
           </div>
-          <div className="p-0 overflow-y-auto">
+          <div className="p-0 overflow-x-auto overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
