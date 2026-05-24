@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Producto } from '../../domain/entities/types';
+import type { Producto } from '../../domain/entities/types';
 
 interface MenuState {
   menu: Producto[];

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { OrdenActiva } from '../../domain/entities/types';
+import type { OrdenActiva } from '../../domain/entities/types';
 
 interface OrderState {
   ordenesActivas: OrdenActiva[];
