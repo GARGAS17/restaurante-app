@@ -46,16 +46,22 @@ export const CrearOrdenUseCase = async (
 
     if (detallesError) throw detallesError;
 
-    // 4. Actualizar el stock en la base de datos (simplificado)
-    // En un entorno real se recomienda un RPC (Stored Procedure) para evitar race conditions
-    const menuActual = useMenuStore.getState().menu;
+    // 4. Actualizar el stock en la base de datos leyendo el valor actual para evitar race conditions
     for (const item of items) {
-      const producto = menuActual.find((p) => p.id === item.producto_id);
-      if (producto) {
-        await supabase
+      const { data: prod, error: selectError } = await supabase.from('productos').select('stock_diario').eq('id', item.producto_id).single();
+      if (selectError) {
+        console.error(`Error leyendo stock de producto ${item.producto_id}:`, selectError);
+        continue;
+      }
+      if (prod) {
+        const { error: updateError } = await supabase
           .from('productos')
-          .update({ stock_diario: producto.stock_diario }) // usa el stock ya descontado optimisticamente
+          .update({ stock_diario: Math.max(0, prod.stock_diario - item.cantidad) })
           .eq('id', item.producto_id);
+          
+        if (updateError) {
+          console.error(`Error actualizando stock de producto ${item.producto_id}:`, updateError);
+        }
       }
     }
 

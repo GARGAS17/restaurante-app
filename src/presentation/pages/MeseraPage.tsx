@@ -82,7 +82,9 @@ export default function MeseraPage() {
       setIdentificador('');
       setTicketItems([]);
       window.scrollTo(0, 0);
-      setActiveTab('comandas_activas'); // Opcional: llevar a la vista de activas tras enviar
+      // Forzar actualización de ordenes activas por si el realtime se adelantó
+      FetchOrdenesUseCase();
+      // Ya NO cambiamos de pestaña: setActiveTab('comandas_activas');
     }
   };
 
@@ -169,7 +171,10 @@ export default function MeseraPage() {
                   <select
                     className="w-full px-4 py-4 text-lg border rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gray-50"
                     value={identificador}
-                    onChange={(e) => setIdentificador(e.target.value)}
+                    onChange={(e) => {
+                      setIdentificador(e.target.value);
+                      e.target.blur(); // Cierra el menú en móviles
+                    }}
                   >
                     <option value="" disabled>Seleccione una mesa</option>
                     {Array.from({ length: cantidadMesas }, (_, i) => i + 1).map(num => (
@@ -226,8 +231,8 @@ export default function MeseraPage() {
                             <span className="w-6 text-center font-bold text-lg">{cant}</span>
                             <button 
                               onClick={() => addToTicket(p.id, p.nombre)}
-                              disabled={p.stock_diario <= 0}
-                              className="p-3 rounded-full bg-purple-600 text-white hover:bg-purple-700 active:scale-95 shadow-sm"
+                              disabled={cant >= p.stock_diario}
+                              className="p-3 rounded-full bg-purple-600 text-white hover:bg-purple-700 active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <Plus className="w-5 h-5" />
                             </button>
@@ -276,8 +281,8 @@ export default function MeseraPage() {
                             <span className="w-6 text-center font-bold text-lg">{cant}</span>
                             <button 
                               onClick={() => addToTicket(p.id, p.nombre)}
-                              disabled={p.stock_diario <= 0}
-                              className="p-3 rounded-full bg-orange-500 text-white hover:bg-orange-600 active:scale-95 shadow-sm"
+                              disabled={cant >= p.stock_diario}
+                              className="p-3 rounded-full bg-orange-500 text-white hover:bg-orange-600 active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <Plus className="w-5 h-5" />
                             </button>
