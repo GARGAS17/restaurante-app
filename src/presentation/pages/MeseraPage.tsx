@@ -4,6 +4,8 @@ import { useOrderStore } from '../../application/store/useOrderStore';
 import { FetchMenuUseCase } from '../../application/useCases/FetchMenuUseCase';
 import { FetchOrdenesUseCase } from '../../application/useCases/FetchOrdenesUseCase';
 import { SubscribeOrdenesUseCase } from '../../application/useCases/SubscribeOrdenesUseCase';
+import { useConfigStore } from '../../application/store/useConfigStore';
+import { FetchConfigUseCase } from '../../application/useCases/FetchConfigUseCase';
 import { CrearOrdenUseCase } from '../../application/useCases/CrearOrdenUseCase';
 import { LiberarOrdenUseCase } from '../../application/useCases/LiberarOrdenUseCase';
 import type { TipoOrden, OrdenActiva } from '../../domain/entities/types';
@@ -12,6 +14,7 @@ import { Plus, Minus, Send, CheckCircle2, ShoppingBag, ClipboardList, UtensilsCr
 export default function MeseraPage() {
   const menu = useMenuStore((state) => state.menu);
   const ordenesActivas = useOrderStore((state) => state.ordenesActivas);
+  const cantidadMesas = useConfigStore((state) => state.cantidadMesas);
   
   // Estado de navegación (Mobile-first tabs)
   const [activeTab, setActiveTab] = useState<'tomar_pedido' | 'comandas_activas'>('tomar_pedido');
@@ -23,6 +26,7 @@ export default function MeseraPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    FetchConfigUseCase();
     FetchMenuUseCase();
     FetchOrdenesUseCase();
     
@@ -32,6 +36,11 @@ export default function MeseraPage() {
       unsubscribe();
     };
   }, []);
+
+  const handleTipoChange = (tipo: TipoOrden) => {
+    setTipoSeleccionado(tipo);
+    setIdentificador('');
+  };
 
   const addToTicket = (productoId: string, nombre: string) => {
     const existing = ticketItems.find(item => item.producto_id === productoId);
@@ -135,7 +144,7 @@ export default function MeseraPage() {
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-4">
               <div className="flex p-1 bg-gray-100 rounded-xl">
                 <button
-                  onClick={() => setTipoSeleccionado('mesa')}
+                  onClick={() => handleTipoChange('mesa')}
                   className={`flex-1 py-3 text-base font-semibold rounded-lg transition-all ${
                     tipoSeleccionado === 'mesa' ? 'bg-white text-purple-700 shadow' : 'text-gray-500'
                   }`}
@@ -143,7 +152,7 @@ export default function MeseraPage() {
                   Para Mesa
                 </button>
                 <button
-                  onClick={() => setTipoSeleccionado('llevar')}
+                  onClick={() => handleTipoChange('llevar')}
                   className={`flex-1 py-3 text-base font-semibold rounded-lg transition-all ${
                     tipoSeleccionado === 'llevar' ? 'bg-white text-purple-700 shadow' : 'text-gray-500'
                   }`}
@@ -156,13 +165,26 @@ export default function MeseraPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {tipoSeleccionado === 'mesa' ? 'Número de Mesa' : 'Nombre del Cliente'}
                 </label>
-                <input 
-                  type="text" 
-                  placeholder={tipoSeleccionado === 'mesa' ? 'Ej: 4' : 'Ej: Juan Pérez'} 
-                  className="w-full px-4 py-4 text-lg border rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gray-50"
-                  value={identificador}
-                  onChange={(e) => setIdentificador(e.target.value)}
-                />
+                {tipoSeleccionado === 'mesa' ? (
+                  <select
+                    className="w-full px-4 py-4 text-lg border rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gray-50"
+                    value={identificador}
+                    onChange={(e) => setIdentificador(e.target.value)}
+                  >
+                    <option value="" disabled>Seleccione una mesa</option>
+                    {Array.from({ length: cantidadMesas }, (_, i) => i + 1).map(num => (
+                      <option key={num} value={`Mesa ${num}`}>Mesa {num}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input 
+                    type="text" 
+                    placeholder="Ej: Juan Pérez" 
+                    className="w-full px-4 py-4 text-lg border rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gray-50"
+                    value={identificador}
+                    onChange={(e) => setIdentificador(e.target.value)}
+                  />
+                )}
               </div>
             </div>
 
