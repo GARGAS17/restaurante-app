@@ -1,6 +1,7 @@
 import { supabase } from '../../infrastructure/api/supabase';
 import { useMenuStore } from '../store/useMenuStore';
 import type { TipoOrden } from '../../domain/entities/types';
+import { OrderFactory } from '../../domain/entities/OrderFactory';
 
 export interface OrdenItemInput {
   producto_id: string;
@@ -21,14 +22,12 @@ export const CrearOrdenUseCase = async (
       descontarStockLocal(item.producto_id, item.cantidad);
     });
 
-    // 2. Crear la cabecera de la orden
+    // 2. Crear la cabecera de la orden usando el Factory
+    const ordenPayload = OrderFactory.createOrder(tipo, identificador);
+    
     const { data: ordenData, error: ordenError } = await supabase
       .from('ordenes_activas')
-      .insert({
-        tipo,
-        identificador,
-        // creado_por: usuarioId // Omitimos temporalmente si no hay Auth
-      })
+      .insert(ordenPayload)
       .select()
       .single();
 

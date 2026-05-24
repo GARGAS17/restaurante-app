@@ -6,13 +6,16 @@ import { FetchOrdenesUseCase } from '../../application/useCases/FetchOrdenesUseC
 import { SubscribeOrdenesUseCase } from '../../application/useCases/SubscribeOrdenesUseCase';
 import { CrearOrdenUseCase } from '../../application/useCases/CrearOrdenUseCase';
 import { LiberarOrdenUseCase } from '../../application/useCases/LiberarOrdenUseCase';
-import type { TipoOrden } from '../../domain/entities/types';
-import { Plus, Minus, Send, CheckCircle2 } from 'lucide-react';
+import type { TipoOrden, OrdenActiva } from '../../domain/entities/types';
+import { Plus, Minus, Send, CheckCircle2, ShoppingBag, ClipboardList, UtensilsCrossed } from 'lucide-react';
 
 export default function MeseraPage() {
   const menu = useMenuStore((state) => state.menu);
   const ordenesActivas = useOrderStore((state) => state.ordenesActivas);
   
+  // Estado de navegación (Mobile-first tabs)
+  const [activeTab, setActiveTab] = useState<'tomar_pedido' | 'comandas_activas'>('tomar_pedido');
+
   // Estado para la orden que se está creando
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoOrden>('mesa');
   const [identificador, setIdentificador] = useState('');
@@ -52,6 +55,10 @@ export default function MeseraPage() {
     }
   };
 
+  const getItemCantidad = (productoId: string) => {
+    return ticketItems.find(item => item.producto_id === productoId)?.cantidad || 0;
+  };
+
   const handleEnviarComanda = async () => {
     if (!identificador.trim() || ticketItems.length === 0) return;
     
@@ -62,11 +69,11 @@ export default function MeseraPage() {
     if (result.error) {
       alert('Error al crear la orden. Intente de nuevo.');
     } else {
-      // Limpiar ticket
+      // Limpiar ticket y volver a arriba
       setIdentificador('');
       setTicketItems([]);
-      // Recargar órdenes
-      FetchOrdenesUseCase();
+      window.scrollTo(0, 0);
+      setActiveTab('comandas_activas'); // Opcional: llevar a la vista de activas tras enviar
     }
   };
 
@@ -79,165 +86,256 @@ export default function MeseraPage() {
 
   const corrientes = menu.filter(p => p.categoria === 'corriente');
   const asados = menu.filter(p => p.categoria === 'asados');
+  const totalItems = ticketItems.reduce((acc, curr) => acc + curr.cantidad, 0);
 
   return (
-    <div className="flex h-[calc(100vh-10rem)] gap-6">
-      {/* PANEL IZQUIERDO: CREAR ORDEN */}
-      <div className="w-2/3 flex flex-col bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
-        <div className="p-4 border-b bg-gray-50 flex gap-4 items-center">
-          <div className="flex bg-white rounded-lg shadow-sm p-1 border">
-            <button
-              onClick={() => setTipoSeleccionado('mesa')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                tipoSeleccionado === 'mesa' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              En Mesa
-            </button>
-            <button
-              onClick={() => setTipoSeleccionado('llevar')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                tipoSeleccionado === 'llevar' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Para Llevar
-            </button>
-          </div>
-          <input 
-            type="text" 
-            placeholder={tipoSeleccionado === 'mesa' ? 'Ej: Mesa 4' : 'Nombre del Cliente'} 
-            className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
-            value={identificador}
-            onChange={(e) => setIdentificador(e.target.value)}
-          />
-        </div>
-
-        <div className="flex-1 flex overflow-hidden">
-          {/* MENU GRID */}
-          <div className="w-2/3 p-4 overflow-y-auto bg-gray-50/50">
-            <h3 className="font-semibold text-gray-700 mb-3 text-lg">Corrientes</h3>
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {corrientes.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => addToTicket(p.id, p.nombre)}
-                  disabled={p.stock_diario <= 0}
-                  className={`p-3 rounded-xl border text-left flex flex-col transition-all active:scale-95 ${
-                    p.stock_diario > 0 
-                      ? 'bg-white hover:border-purple-300 hover:shadow-md' 
-                      : 'bg-gray-100 opacity-50 cursor-not-allowed grayscale'
-                  }`}
-                >
-                  <span className="font-medium text-gray-800">{p.nombre}</span>
-                  <span className={`text-xs mt-1 px-2 py-1 rounded-full w-fit ${p.stock_diario > 5 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    Stock: {p.stock_diario}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <h3 className="font-semibold text-gray-700 mb-3 text-lg">Asados</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {asados.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => addToTicket(p.id, p.nombre)}
-                  disabled={p.stock_diario <= 0}
-                  className={`p-3 rounded-xl border text-left flex flex-col transition-all active:scale-95 ${
-                    p.stock_diario > 0 
-                      ? 'bg-white hover:border-orange-300 hover:shadow-md' 
-                      : 'bg-gray-100 opacity-50 cursor-not-allowed grayscale'
-                  }`}
-                >
-                  <span className="font-medium text-gray-800">{p.nombre}</span>
-                  <span className={`text-xs mt-1 px-2 py-1 rounded-full w-fit ${p.stock_diario > 5 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    Stock: {p.stock_diario}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* CURRENT TICKET */}
-          <div className="w-1/3 border-l bg-white flex flex-col relative">
-            <div className="p-4 bg-gray-50 border-b">
-              <h3 className="font-semibold text-gray-800">Comanda Actual</h3>
-            </div>
-            <div className="flex-1 p-4 overflow-y-auto space-y-3">
-              {ticketItems.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                  <p className="text-sm">No hay platos seleccionados</p>
-                </div>
-              ) : (
-                ticketItems.map(item => (
-                  <div key={item.producto_id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border">
-                    <span className="text-sm font-medium line-clamp-1 flex-1">{item.nombre}</span>
-                    <div className="flex items-center gap-2 ml-2">
-                      <button onClick={() => removeFromTicket(item.producto_id)} className="p-1 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-md">
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <span className="w-4 text-center font-bold">{item.cantidad}</span>
-                      <button onClick={() => addToTicket(item.producto_id, item.nombre)} className="p-1 text-gray-500 hover:text-green-500 hover:bg-green-50 rounded-md">
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="p-4 border-t bg-gray-50">
-              <button
-                onClick={handleEnviarComanda}
-                disabled={ticketItems.length === 0 || !identificador.trim() || isSubmitting}
-                className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? 'Enviando...' : (
-                  <>
-                    <Send className="w-5 h-5" /> Enviar a Cocina
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-24 md:pb-6">
+      
+      {/* TABS DE NAVEGACION */}
+      <div className="bg-white shadow-sm sticky top-0 z-20 md:static border-b">
+        <div className="flex w-full">
+          <button
+            onClick={() => setActiveTab('tomar_pedido')}
+            className={`flex-1 py-4 text-center font-medium flex items-center justify-center gap-2 transition-colors ${
+              activeTab === 'tomar_pedido' 
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/30' 
+                : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            <ShoppingBag className="w-5 h-5" />
+            Tomar Pedido
+          </button>
+          <button
+            onClick={() => setActiveTab('comandas_activas')}
+            className={`flex-1 py-4 text-center font-medium flex items-center justify-center gap-2 transition-colors relative ${
+              activeTab === 'comandas_activas' 
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/30' 
+                : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            <ClipboardList className="w-5 h-5" />
+            Comandas Activas
+            {ordenesActivas.length > 0 && (
+              <span className="absolute top-2 right-4 md:right-8 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                {ordenesActivas.length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* PANEL DERECHO: ORDENES ACTIVAS */}
-      <div className="w-1/3 flex flex-col bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
-        <div className="p-4 bg-gray-800 text-white flex justify-between items-center">
-          <h2 className="font-semibold">Órdenes Activas</h2>
-          <span className="bg-gray-700 px-2 py-1 rounded-full text-xs">{ordenesActivas.length}</span>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
-          {ordenesActivas.length === 0 ? (
-            <p className="text-center text-gray-500 mt-10">No hay órdenes en proceso</p>
-          ) : (
-            ordenesActivas.map(orden => (
-              <div key={orden.id} className="bg-white border rounded-xl shadow-sm overflow-hidden flex flex-col">
-                <div className={`px-4 py-2 border-b flex justify-between items-center ${orden.tipo === 'mesa' ? 'bg-blue-50 text-blue-800' : 'bg-orange-50 text-orange-800'}`}>
-                  <span className="font-bold">{orden.identificador}</span>
-                  <span className="text-xs uppercase font-bold tracking-wider">{orden.tipo}</span>
-                </div>
-                <div className="p-4">
-                  <ul className="space-y-2 mb-4">
-                    {orden.detalles?.map(detalle => (
-                      <li key={detalle.id} className="text-sm flex items-start gap-2">
-                        <span className="font-bold text-gray-700">{detalle.cantidad}x</span>
-                        <span className="text-gray-600">{detalle.producto?.nombre || 'Producto'}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={() => handleLiberar(orden.id)}
-                    className="w-full py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle2 className="w-5 h-5" /> Liberar (Entregado)
-                  </button>
-                </div>
+      {/* CONTENIDO PRINCIPAL */}
+      <div className="flex-1 w-full max-w-3xl mx-auto md:p-4">
+        
+        {/* VISTA 1: TOMAR PEDIDO */}
+        {activeTab === 'tomar_pedido' && (
+          <div className="flex flex-col space-y-6 p-4">
+            
+            {/* Opciones de Envío e Identificador */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+              <div className="flex p-1 bg-gray-100 rounded-xl">
+                <button
+                  onClick={() => setTipoSeleccionado('mesa')}
+                  className={`flex-1 py-3 text-base font-semibold rounded-lg transition-all ${
+                    tipoSeleccionado === 'mesa' ? 'bg-white text-purple-700 shadow' : 'text-gray-500'
+                  }`}
+                >
+                  Para Mesa
+                </button>
+                <button
+                  onClick={() => setTipoSeleccionado('llevar')}
+                  className={`flex-1 py-3 text-base font-semibold rounded-lg transition-all ${
+                    tipoSeleccionado === 'llevar' ? 'bg-white text-purple-700 shadow' : 'text-gray-500'
+                  }`}
+                >
+                  Para Llevar
+                </button>
               </div>
-            ))
-          )}
-        </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {tipoSeleccionado === 'mesa' ? 'Número de Mesa' : 'Nombre del Cliente'}
+                </label>
+                <input 
+                  type="text" 
+                  placeholder={tipoSeleccionado === 'mesa' ? 'Ej: 4' : 'Ej: Juan Pérez'} 
+                  className="w-full px-4 py-4 text-lg border rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gray-50"
+                  value={identificador}
+                  onChange={(e) => setIdentificador(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Menú de Platos */}
+            <div className="space-y-6 pb-6">
+              
+              <section>
+                <h3 className="font-bold text-gray-800 text-xl mb-4 flex items-center gap-2">
+                  <UtensilsCrossed className="w-5 h-5 text-purple-500" /> Corrientes
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {corrientes.map(p => {
+                    const cant = getItemCantidad(p.id);
+                    return (
+                      <div 
+                        key={p.id}
+                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                          p.stock_diario > 0 
+                            ? cant > 0 ? 'border-purple-400 bg-purple-50' : 'bg-white border-gray-200'
+                            : 'bg-gray-100 opacity-60 grayscale cursor-not-allowed'
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 text-lg">{p.nombre}</span>
+                          <span className={`text-xs font-medium mt-1 w-fit px-2 py-0.5 rounded-full ${p.stock_diario > 5 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            Stock: {p.stock_diario}
+                          </span>
+                        </div>
+                        
+                        {p.stock_diario > 0 ? (
+                          <div className="flex items-center gap-3">
+                            <button 
+                              onClick={() => removeFromTicket(p.id)}
+                              disabled={cant === 0}
+                              className={`p-3 rounded-full ${cant > 0 ? 'bg-white border text-red-500 hover:bg-red-50' : 'text-gray-300'}`}
+                            >
+                              <Minus className="w-5 h-5" />
+                            </button>
+                            <span className="w-6 text-center font-bold text-lg">{cant}</span>
+                            <button 
+                              onClick={() => addToTicket(p.id, p.nombre)}
+                              disabled={p.stock_diario <= 0}
+                              className="p-3 rounded-full bg-purple-600 text-white hover:bg-purple-700 active:scale-95 shadow-sm"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-bold text-gray-500 px-4">Agotado</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section>
+                <h3 className="font-bold text-gray-800 text-xl mb-4 flex items-center gap-2">
+                  <UtensilsCrossed className="w-5 h-5 text-orange-500" /> Asados
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {asados.map(p => {
+                    const cant = getItemCantidad(p.id);
+                    return (
+                      <div 
+                        key={p.id}
+                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                          p.stock_diario > 0 
+                            ? cant > 0 ? 'border-orange-400 bg-orange-50' : 'bg-white border-gray-200'
+                            : 'bg-gray-100 opacity-60 grayscale cursor-not-allowed'
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 text-lg">{p.nombre}</span>
+                          <span className={`text-xs font-medium mt-1 w-fit px-2 py-0.5 rounded-full ${p.stock_diario > 5 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            Stock: {p.stock_diario}
+                          </span>
+                        </div>
+                        
+                        {p.stock_diario > 0 ? (
+                          <div className="flex items-center gap-3">
+                            <button 
+                              onClick={() => removeFromTicket(p.id)}
+                              disabled={cant === 0}
+                              className={`p-3 rounded-full ${cant > 0 ? 'bg-white border text-red-500 hover:bg-red-50' : 'text-gray-300'}`}
+                            >
+                              <Minus className="w-5 h-5" />
+                            </button>
+                            <span className="w-6 text-center font-bold text-lg">{cant}</span>
+                            <button 
+                              onClick={() => addToTicket(p.id, p.nombre)}
+                              disabled={p.stock_diario <= 0}
+                              className="p-3 rounded-full bg-orange-500 text-white hover:bg-orange-600 active:scale-95 shadow-sm"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-bold text-gray-500 px-4">Agotado</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+            </div>
+
+            {/* Sticky Bottom Bar for Submit */}
+            {totalItems > 0 && (
+              <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-30 md:static md:bg-transparent md:border-0 md:shadow-none md:p-0">
+                <button
+                  onClick={handleEnviarComanda}
+                  disabled={!identificador.trim() || isSubmitting}
+                  className="w-full py-4 px-6 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed text-white font-bold text-lg rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-between"
+                >
+                  <span className="bg-white/20 px-3 py-1 rounded-lg text-sm">{totalItems} ítems</span>
+                  <div className="flex items-center gap-2">
+                    {isSubmitting ? 'Enviando...' : 'Enviar a Cocina'}
+                    {!isSubmitting && <Send className="w-5 h-5" />}
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* VISTA 2: COMANDAS ACTIVAS */}
+        {activeTab === 'comandas_activas' && (
+          <div className="p-4 space-y-4">
+            {ordenesActivas.length === 0 ? (
+              <div className="text-center py-20 flex flex-col items-center">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle2 className="w-10 h-10 text-green-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">¡Todo entregado!</h3>
+                <p className="text-gray-500 mt-2">No hay comandas pendientes por liberar.</p>
+              </div>
+            ) : (
+              ordenesActivas.map((orden: OrdenActiva) => (
+                <div key={orden.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className={`px-4 py-3 flex justify-between items-center ${orden.tipo === 'mesa' ? 'bg-blue-50/50 border-b border-blue-100' : 'bg-orange-50/50 border-b border-orange-100'}`}>
+                    <div className="flex items-center gap-3">
+                      <span className={`w-3 h-3 rounded-full ${orden.tipo === 'mesa' ? 'bg-blue-500' : 'bg-orange-500'}`}></span>
+                      <span className="font-bold text-lg text-gray-800">{orden.identificador}</span>
+                    </div>
+                    <span className={`text-xs uppercase font-bold px-2 py-1 rounded-md ${orden.tipo === 'mesa' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                      {orden.tipo}
+                    </span>
+                  </div>
+                  
+                  <div className="p-4">
+                    <ul className="space-y-3 mb-5">
+                      {orden.detalles?.map(detalle => (
+                        <li key={detalle.id} className="flex items-start gap-3">
+                          <span className="font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded text-sm">{detalle.cantidad}x</span>
+                          <span className="text-gray-800 font-medium">{detalle.producto?.nombre || 'Producto'}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    
+                    <button
+                      onClick={() => handleLiberar(orden.id)}
+                      className="w-full py-4 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-bold rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 text-lg"
+                    >
+                      <CheckCircle2 className="w-6 h-6" /> Liberar (Entregada)
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
