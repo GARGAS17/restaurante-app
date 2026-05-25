@@ -16,10 +16,13 @@ export const CrearOrdenUseCase = async (
   if (items.length === 0) return { error: 'La orden no tiene productos' };
 
   try {
+    // 0. Guardar Snapshot para posible Rollback
+    const menuStore = useMenuStore.getState();
+    const snapshot = menuStore.menu;
+
     // 1. Descontar stock localmente (Optimistic UI)
-    const { descontarStockLocal } = useMenuStore.getState();
     items.forEach((item) => {
-      descontarStockLocal(item.producto_id, item.cantidad);
+      menuStore.descontarStockLocal(item.producto_id, item.cantidad);
     });
 
     // 2. Crear la cabecera de la orden usando el Factory
@@ -46,28 +49,25 @@ export const CrearOrdenUseCase = async (
 
     if (detallesError) throw detallesError;
 
-    // 4. Actualizar el stock en la base de datos leyendo el valor actual para evitar race conditions
+    // 4. Actualizar el stock en la base de datos de manera ATÓMICA vía RPC
     for (const item of items) {
-      const { data: prod, error: selectError } = await supabase.from('productos').select('stock_diario').eq('id', item.producto_id).single();
-      if (selectError) {
-        console.error(`Error leyendo stock de producto ${item.producto_id}:`, selectError);
-        continue;
-      }
-      if (prod) {
-        const { error: updateError } = await supabase
-          .from('productos')
-          .update({ stock_diario: Math.max(0, prod.stock_diario - item.cantidad) })
-          .eq('id', item.producto_id);
-          
-        if (updateError) {
-          console.error(`Error actualizando stock de producto ${item.producto_id}:`, updateError);
-        }
+      const { error: rpcError } = await supabase.rpc('decrementar_stock', {
+        p_producto_id: item.producto_id,
+        p_cantidad: item.cantidad
+      });
+
+      if (rpcError) {
+        console.error(`Error atómico decrementando stock de ${item.producto_id}:`, rpcError);
+        // Si falla la BD, lanzamos error para que el catch revierta todo
+        throw rpcError;
       }
     }
 
     return { data: ordenData, error: null };
   } catch (error) {
     console.error('Error en CrearOrdenUseCase:', error);
+    // ROLLBACK: Revertimos la UI si algo falló en la BD usando la copia de seguridad
+    useMenuStore.getState().revertirStockLocal(snapshot); 
     return { data: null, error };
   }
 };

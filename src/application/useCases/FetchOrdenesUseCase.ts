@@ -13,7 +13,7 @@ export const FetchOrdenesUseCase = async () => {
           producto:productos(*)
         )
       `)
-      .order('creado_at', { ascending: true });
+      .order('created_at', { ascending: true });
 
     if (error) {
       console.error('Error fetching orders:', error);

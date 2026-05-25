@@ -6,7 +6,7 @@ import { Clock } from 'lucide-react';
 import type { OrdenActiva } from '../../domain/entities/types';
 
 const OrdenCard = ({ orden }: { orden: OrdenActiva }) => {
-  const timeElapsed = Math.floor((new Date().getTime() - new Date(orden.creado_at).getTime()) / 60000);
+  const timeElapsed = Math.floor((new Date().getTime() - new Date(orden.created_at).getTime()) / 60000);
   
   return (
     <div className="bg-white border rounded-xl shadow-md overflow-hidden flex flex-col mb-4 transform transition-all hover:scale-[1.02]">

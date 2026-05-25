@@ -6,6 +6,7 @@ interface MenuState {
   setMenu: (productos: Producto[]) => void;
   descontarStockLocal: (productoId: string, cantidad: number) => void;
   actualizarStockTotal: (productoId: string, nuevoStock: number) => void;
+  revertirStockLocal: (snapshot: Producto[]) => void;
 }
 
 export const useMenuStore = create<MenuState>((set) => ({
@@ -32,4 +33,7 @@ export const useMenuStore = create<MenuState>((set) => ({
           : prod
       ),
     })),
+    
+  // En caso de que falle la creación de la orden en Supabase, revertimos
+  revertirStockLocal: (snapshot) => set({ menu: snapshot }),
 }));

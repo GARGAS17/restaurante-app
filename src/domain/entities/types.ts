@@ -29,8 +29,7 @@ export interface OrdenActiva {
   id: string;
   tipo: TipoOrden;
   identificador: string;
-  creado_por: string;
-  creado_at: string;
+  created_at: string;
   detalles?: DetalleOrdenActiva[];
 }
 

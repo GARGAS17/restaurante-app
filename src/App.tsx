@@ -15,34 +15,66 @@ function App() {
   const { setAuth, clearAuth } = useAuthStore();
 
   useEffect(() => {
-    // 1. Revisar sesión inicial
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const { perfil } = await FetchProfileUseCase(session.user.id);
+    let mounted = true;
+
+    // Failsafe DEFINITIVO: Si en 3 segundos la sesión no se resuelve, forzamos reinicio.
+    const failsafeTimeout = setTimeout(() => {
+      if (useAuthStore.getState().loading) {
+        console.warn('Failsafe Timeout: Supabase se colgó buscando el perfil o la sesión. Destrabando...');
+        clearAuth();
+      }
+    }, 3000);
+
+    // Función asíncrona NO BLOQUEANTE para no colgar el lock interno de Supabase
+    const handleSessionWithoutBlocking = (session: any) => {
+      if (!session?.user) {
+        clearTimeout(failsafeTimeout);
+        clearAuth();
+        return;
+      }
+      
+      // Usamos .then() en lugar de await para liberar el proceso principal de Supabase
+      FetchProfileUseCase(session.user.id).then(({ perfil }) => {
+        if (!mounted) return;
+        clearTimeout(failsafeTimeout);
         if (perfil) setAuth(session.user, perfil);
         else clearAuth();
-      } else {
+      }).catch(() => {
+        clearTimeout(failsafeTimeout);
         clearAuth();
+      });
+    };
+
+    // 1. Revisar sesión inicial al recargar la página
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!mounted) return;
+      if (error) {
+        clearTimeout(failsafeTimeout);
+        clearAuth();
+      } else {
+        handleSessionWithoutBlocking(session);
       }
     });
 
-    // 2. Escuchar cambios (login, logout, token refresh)
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session?.user) {
+    // 2. Escuchar cambios (NO DEBE SER ASYNC para no bloquear el lock de Supabase)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      
+      if (event === 'SIGNED_OUT') {
         clearAuth();
-      } else if (event === 'SIGNED_IN' && session?.user) {
-        // En SIGNED_IN usualmente LoginUseCase ya hizo setAuth, pero por si acaso.
-        // Evitamos doble fetch si ya tenemos el perfil en estado
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         const currentPerfil = useAuthStore.getState().perfil;
         if (!currentPerfil) {
-          const { perfil } = await FetchProfileUseCase(session.user.id);
-          if (perfil) setAuth(session.user, perfil);
-          else clearAuth();
+          handleSessionWithoutBlocking(session);
+        } else {
+          clearTimeout(failsafeTimeout);
+          setAuth(session.user, currentPerfil);
         }
       }
     });
 
     return () => {
+      mounted = false;
       authListener.subscription.unsubscribe();
     };
   }, []);
