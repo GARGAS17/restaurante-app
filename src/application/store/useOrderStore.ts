@@ -6,6 +6,7 @@ interface OrderState {
   setOrdenes: (ordenes: OrdenActiva[]) => void;
   agregarOrden: (orden: OrdenActiva) => void;
   removerOrden: (id: string) => void;
+  marcarComoConfirmada: (id: string) => void;
 }
 
 export const useOrderStore = create<OrderState>((set) => ({
@@ -24,9 +25,17 @@ export const useOrderStore = create<OrderState>((set) => ({
       return { ordenesActivas: [...state.ordenesActivas, orden] };
     }),
     
-  // Cuando una mesera "Libera" un pedido
+    // Cuando una mesera "Libera" un pedido
   removerOrden: (id) => 
     set((state) => ({ 
       ordenesActivas: state.ordenesActivas.filter((o) => o.id !== id) 
+    })),
+    
+  // Cuando una mesera "Confirma" (le dicta) un pedido a cocina
+  marcarComoConfirmada: (id) =>
+    set((state) => ({
+      ordenesActivas: state.ordenesActivas.map((o) =>
+        o.id === id ? { ...o, estado: 'confirmada' } : o
+      )
     })),
 }));

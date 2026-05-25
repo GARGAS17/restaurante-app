@@ -8,8 +8,9 @@ import { useConfigStore } from '../../application/store/useConfigStore';
 import { FetchConfigUseCase } from '../../application/useCases/FetchConfigUseCase';
 import { CrearOrdenUseCase } from '../../application/useCases/CrearOrdenUseCase';
 import { LiberarOrdenUseCase } from '../../application/useCases/LiberarOrdenUseCase';
+import { ConfirmarOrdenUseCase } from '../../application/useCases/ConfirmarOrdenUseCase';
 import type { TipoOrden, OrdenActiva } from '../../domain/entities/types';
-import { Plus, Minus, Send, CheckCircle2, ShoppingBag, ClipboardList, UtensilsCrossed } from 'lucide-react';
+import { Plus, Minus, Send, CheckCircle2, ShoppingBag, ClipboardList, UtensilsCrossed, CheckSquare, Check } from 'lucide-react';
 
 export default function MeseraPage() {
   const menu = useMenuStore((state) => state.menu);
@@ -17,7 +18,7 @@ export default function MeseraPage() {
   const cantidadMesas = useConfigStore((state) => state.cantidadMesas);
   
   // Estado de navegación (Mobile-first tabs)
-  const [activeTab, setActiveTab] = useState<'tomar_pedido' | 'comandas_activas'>('tomar_pedido');
+  const [activeTab, setActiveTab] = useState<'tomar_pedido' | 'pendientes' | 'confirmadas'>('tomar_pedido');
 
   // Estado para la orden que se está creando
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoOrden>('mesa');
@@ -95,9 +96,20 @@ export default function MeseraPage() {
     }
   };
 
+  const handleConfirmar = async (ordenId: string) => {
+    // UI Update optimista ejecutado por el UseCase
+    const result = await ConfirmarOrdenUseCase(ordenId);
+    if (result.error) {
+      alert('Error al confirmar la orden en cocina.');
+    }
+  };
+
   const corrientes = menu.filter(p => p.categoria === 'corriente');
   const asados = menu.filter(p => p.categoria === 'asados');
   const totalItems = ticketItems.reduce((acc, curr) => acc + curr.cantidad, 0);
+
+  const pendientes = ordenesActivas.filter(o => o.estado === 'pendiente');
+  const confirmadas = ordenesActivas.filter(o => o.estado === 'confirmada');
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-24 md:pb-6">
@@ -107,28 +119,44 @@ export default function MeseraPage() {
         <div className="flex w-full">
           <button
             onClick={() => setActiveTab('tomar_pedido')}
-            className={`flex-1 py-4 text-center font-medium flex items-center justify-center gap-2 transition-colors ${
+            className={`flex-1 py-3 px-1 md:py-4 text-center font-medium flex flex-col md:flex-row items-center justify-center gap-1 transition-colors ${
               activeTab === 'tomar_pedido' 
                 ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/30' 
                 : 'text-gray-500 hover:bg-gray-50'
             }`}
           >
             <ShoppingBag className="w-5 h-5" />
-            Tomar Pedido
+            <span className="text-xs md:text-base">Tomar Pedido</span>
           </button>
           <button
-            onClick={() => setActiveTab('comandas_activas')}
-            className={`flex-1 py-4 text-center font-medium flex items-center justify-center gap-2 transition-colors relative ${
-              activeTab === 'comandas_activas' 
+            onClick={() => setActiveTab('pendientes')}
+            className={`flex-1 py-3 px-1 md:py-4 text-center font-medium flex flex-col md:flex-row items-center justify-center gap-1 transition-colors relative ${
+              activeTab === 'pendientes' 
                 ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/30' 
                 : 'text-gray-500 hover:bg-gray-50'
             }`}
           >
             <ClipboardList className="w-5 h-5" />
-            Comandas Activas
-            {ordenesActivas.length > 0 && (
-              <span className="absolute top-2 right-4 md:right-8 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {ordenesActivas.length}
+            <span className="text-xs md:text-base">Pendientes</span>
+            {pendientes.length > 0 && (
+              <span className="absolute top-1 right-2 md:right-4 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {pendientes.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('confirmadas')}
+            className={`flex-1 py-3 px-1 md:py-4 text-center font-medium flex flex-col md:flex-row items-center justify-center gap-1 transition-colors relative ${
+              activeTab === 'confirmadas' 
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/30' 
+                : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            <CheckSquare className="w-5 h-5" />
+            <span className="text-xs md:text-base">Confirmadas</span>
+            {confirmadas.length > 0 && (
+              <span className="absolute top-1 right-2 md:right-4 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {confirmadas.length}
               </span>
             )}
           </button>
@@ -317,19 +345,66 @@ export default function MeseraPage() {
           </div>
         )}
 
-        {/* VISTA 2: COMANDAS ACTIVAS */}
-        {activeTab === 'comandas_activas' && (
+        {/* VISTA 2: PENDIENTES (A dictar a cocina) */}
+        {activeTab === 'pendientes' && (
           <div className="p-4 space-y-4">
-            {ordenesActivas.length === 0 ? (
+            {pendientes.length === 0 ? (
+              <div className="text-center py-20 flex flex-col items-center">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <ClipboardList className="w-10 h-10 text-orange-300" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Sin comandas nuevas</h3>
+                <p className="text-gray-500 mt-2">No hay platos pendientes por dictarle a cocina.</p>
+              </div>
+            ) : (
+              pendientes.map((orden: OrdenActiva) => (
+                <div key={orden.id} className="bg-white rounded-2xl shadow-sm border border-orange-100 overflow-hidden ring-1 ring-orange-50">
+                  <div className={`px-4 py-3 flex justify-between items-center ${orden.tipo === 'mesa' ? 'bg-blue-50/50 border-b border-blue-100' : 'bg-orange-50/50 border-b border-orange-100'}`}>
+                    <div className="flex items-center gap-3">
+                      <span className={`w-3 h-3 rounded-full animate-pulse ${orden.tipo === 'mesa' ? 'bg-blue-500' : 'bg-orange-500'}`}></span>
+                      <span className="font-bold text-lg text-gray-800">{orden.identificador}</span>
+                    </div>
+                    <span className={`text-xs uppercase font-bold px-2 py-1 rounded-md ${orden.tipo === 'mesa' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                      {orden.tipo}
+                    </span>
+                  </div>
+                  
+                  <div className="p-4">
+                    <ul className="space-y-3 mb-5">
+                      {orden.detalles?.map(detalle => (
+                        <li key={detalle.id} className="flex items-start gap-3">
+                          <span className="font-bold text-gray-700 bg-orange-100 px-2 py-0.5 rounded text-sm">{detalle.cantidad}x</span>
+                          <span className="text-gray-800 font-medium">{detalle.producto?.nombre || 'Producto'}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    
+                    <button
+                      onClick={() => handleConfirmar(orden.id)}
+                      className="w-full py-4 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 text-lg"
+                    >
+                      <Check className="w-6 h-6" /> Ya dictado a Cocina
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* VISTA 3: CONFIRMADAS (A liberar) */}
+        {activeTab === 'confirmadas' && (
+          <div className="p-4 space-y-4">
+            {confirmadas.length === 0 ? (
               <div className="text-center py-20 flex flex-col items-center">
                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                   <CheckCircle2 className="w-10 h-10 text-green-400" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800">¡Todo entregado!</h3>
-                <p className="text-gray-500 mt-2">No hay comandas pendientes por liberar.</p>
+                <h3 className="text-xl font-bold text-gray-800">Todo entregado</h3>
+                <p className="text-gray-500 mt-2">No hay comandas esperando salir de cocina.</p>
               </div>
             ) : (
-              ordenesActivas.map((orden: OrdenActiva) => (
+              confirmadas.map((orden: OrdenActiva) => (
                 <div key={orden.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                   <div className={`px-4 py-3 flex justify-between items-center ${orden.tipo === 'mesa' ? 'bg-blue-50/50 border-b border-blue-100' : 'bg-orange-50/50 border-b border-orange-100'}`}>
                     <div className="flex items-center gap-3">
@@ -344,16 +419,16 @@ export default function MeseraPage() {
                   <div className="p-4">
                     <ul className="space-y-3 mb-5">
                       {orden.detalles?.map(detalle => (
-                        <li key={detalle.id} className="flex items-start gap-3">
+                        <li key={detalle.id} className="flex items-start gap-3 opacity-60">
                           <span className="font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded text-sm">{detalle.cantidad}x</span>
-                          <span className="text-gray-800 font-medium">{detalle.producto?.nombre || 'Producto'}</span>
+                          <span className="text-gray-800 font-medium line-through decoration-gray-300">{detalle.producto?.nombre || 'Producto'}</span>
                         </li>
                       ))}
                     </ul>
                     
                     <button
                       onClick={() => handleLiberar(orden.id)}
-                      className="w-full py-4 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-bold rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 text-lg"
+                      className="w-full py-4 bg-gray-800 hover:bg-black active:bg-black text-white font-bold rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 text-lg"
                     >
                       <CheckCircle2 className="w-6 h-6" /> Liberar (Entregada)
                     </button>
