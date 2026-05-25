@@ -1,5 +1,4 @@
 import { supabase } from '../../infrastructure/api/supabase';
-import { useAuthStore } from '../store/useAuthStore';
 import type { Perfil } from '../../domain/entities/types';
 
 export const FetchProfileUseCase = async (userId: string) => {

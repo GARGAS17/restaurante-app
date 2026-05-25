@@ -1,7 +1,7 @@
 import { supabase } from '../../infrastructure/api/supabase';
 import { useOrderStore } from '../store/useOrderStore';
 
-export const LiberarOrdenUseCase = async (ordenId: string, meseraId?: string) => {
+export const LiberarOrdenUseCase = async (ordenId: string) => {
   try {
     // 1. Obtener la orden completa con sus detalles antes de borrarla
     const { data: orden, error: fetchError } = await supabase

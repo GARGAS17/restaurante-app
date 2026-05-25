@@ -66,7 +66,7 @@ function App() {
         const currentPerfil = useAuthStore.getState().perfil;
         if (!currentPerfil) {
           handleSessionWithoutBlocking(session);
-        } else {
+        } else if (session?.user) {
           clearTimeout(failsafeTimeout);
           setAuth(session.user, currentPerfil);
         }
