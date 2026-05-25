@@ -15,10 +15,11 @@ export const CrearOrdenUseCase = async (
 ) => {
   if (items.length === 0) return { error: 'La orden no tiene productos' };
 
+  // 0. Guardar Snapshot para posible Rollback (Declarado fuera del try para ser accesible en el catch)
+  const menuStore = useMenuStore.getState();
+  const snapshot = menuStore.menu;
+
   try {
-    // 0. Guardar Snapshot para posible Rollback
-    const menuStore = useMenuStore.getState();
-    const snapshot = menuStore.menu;
 
     // 1. Descontar stock localmente (Optimistic UI)
     items.forEach((item) => {
